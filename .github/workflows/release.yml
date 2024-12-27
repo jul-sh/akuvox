@@ -1,9 +1,9 @@
 name: "Release"
 
 on:
-  release:
-    types:
-      - "published"
+  push:
+    branches:
+      - main
 
 permissions: {}
 
@@ -17,10 +17,16 @@ jobs:
       - name: "Checkout the repository"
         uses: "actions/checkout@v4"
 
+      - name: "Get commit hash"
+        id: commit
+        shell: "bash"
+        run: |
+          echo "hash=$(git rev-parse --short=7 HEAD)" >> $GITHUB_OUTPUT
+
       - name: "Adjust version number"
         shell: "bash"
         run: |
-          yq -i -o json '.version="${{ github.event.release.tag_name }}"' \
+          yq -i -o json '.version="${{ steps.commit.outputs.hash }}"' \
             "${{ github.workspace }}/custom_components/akuvox/manifest.json"
 
       - name: "ZIP the integration directory"
@@ -29,7 +35,10 @@ jobs:
           cd "${{ github.workspace }}/custom_components/akuvox"
           zip akuvox.zip -r ./
 
-      - name: "Upload the ZIP file to the release"
+      - name: "Create Release"
         uses: softprops/action-gh-release@v0.1.15
         with:
+          tag_name: ${{ steps.commit.outputs.hash }}
+          name: ${{ steps.commit.outputs.hash }}
           files: ${{ github.workspace }}/custom_components/akuvox/akuvox.zip
+          generate_release_notes: true
