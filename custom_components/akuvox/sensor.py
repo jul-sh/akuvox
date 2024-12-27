@@ -25,7 +25,7 @@ async def async_setup_entry(hass, entry, async_add_devices):
     store = storage.Store(hass, 1, DATA_STORAGE_KEY)
     device_data: dict = await store.async_load() # type: ignore
     door_keys_data = device_data["door_keys_data"]
-    date_format = "%d-%m-%Y %H:%M:%S"
+    date_format = "%Y-%m-%d %I:%M:%S %p"
 
     entities = []
     for door_key_data in door_keys_data:
