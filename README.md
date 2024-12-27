@@ -1,7 +1,7 @@
-[![hacs_badge](https://img.shields.io/badge/HACS-Default-41BDF5.svg)](https://github.com/hacs/integration )
-![version](https://img.shields.io/github/v/release/nimroddolev/akuvox)
+[![hacs_badge](https://img.shields.io/badge/HACS-Default-41BDF5.svg)](https://github.com/hacs/integration)
+![version](https://img.shields.io/github/v/release/julsh/akuvox)
 [![Community Forum][forum-shield]][forum]
-<a href="https://www.buymeacoffee.com/nimroddolev"><img src="https://www.buymeacoffee.com/assets/img/custom_images/orange_img.png" height="20px"></a>
+<a href="https://www.buymeacoffee.com/julsh"><img src="https://www.buymeacoffee.com/assets/img/custom_images/orange_img.png" height="20px"></a>
 
 # Akuvox SmartPlus Integration for Home Assistant
 
@@ -18,7 +18,7 @@ For troubleshooting and general discussion please join the [discussion in the Ho
 ## Show Your Support
 
 If you find this integration useful, consider showing your support:
-<a href="https://www.buymeacoffee.com/nimroddolev" target="_blank"><img src="https://cdn.buymeacoffee.com/buttons/v2/default-yellow.png" alt="Buy Me A Coffee" style="height: 30px !important;width: 140px !important;" ></a>
+<a href="https://www.buymeacoffee.com/julsh" target="_blank"><img src="https://cdn.buymeacoffee.com/buttons/v2/default-yellow.png" alt="Buy Me A Coffee" style="height: 30px !important;width: 140px !important;" ></a>
 
 ---
 
@@ -44,26 +44,32 @@ If you find this integration useful, consider showing your support:
 - [Configuration](#configuration)
 - [Finding Your SmartPlus Account Tokens](#finding-your-smartplus-account-tokens)
 
-***
+---
 
 ## Features
 
 ### Door Camera Feeds
+
 You door camera feeds are accessible as camera entities in Home Assistant.
 
 ### Relay Button Control
+
 Your door's relays are added as buttons in Home Assistant which allow you to trigger your doors to open remotely.
 
 ### Temporary Keys
+
 You can view your temporary access keys from the SmartPlus app in Home Assistant.
 
 ### Door Bell & Door Open Events
+
 Whenever any of your doors are rung or opened, the `akuvox_door_update` event is fired in Home Assistant. When you use the `akuvox_door_update` even as an automation trigger, you will have access to data associated with the specific door ring/open event, accessible under: `trigger.event.data`.
 
 #### 1. `trigger.event.data.Location`
+
 The `Location` value represents the name of the Akuvox door that was rung or opened, eg: `Front Door`, `Side Door`, etc.
 
 #### 2. `trigger.event.data.CallType`
+
 The `CallType` value represents the door event type:
 | `CallType` Value | Meaning |
 |-|-|
@@ -72,6 +78,7 @@ The `CallType` value represents the door event type:
 | `Unlock on SmartPlus` | The door opened by a SmartPlus app account. |
 
 #### 3. `trigger.event.data.Initiator`
+
 The `Initiator` value represents the name of the individual that triggered the event.
 | Scenario | Value |
 |-|-|
@@ -79,9 +86,11 @@ The `Initiator` value represents the name of the individual that triggered the e
 | Door rung by an unknown individual | `Visitor` |
 
 #### 4. `trigger.event.data.PicUrl`
+
 The `PicUrl` value contains a URL to the camera screenshot image taken at the time of the door ring/open event.
 
 #### 5. `trigger.event.data.RelayName`
+
 The `RelayName` value represents the name of the door relay that was opened (useful if your door has multiple relays), eg: `Relay1`, `Relay2`, etc.
 
 ---
@@ -148,11 +157,10 @@ action:
       mwessage: >-
         {{ trigger.event.data.Location }} door opened by {{ trigger.event.data.Initiator }}
 ```
-![notification](https://github.com/nimroddolev/akuvox/assets/1849295/15a49b4f-0b2f-4760-9864-66c06aa483be)
 
+![notification](https://github.com/julsh/akuvox/assets/1849295/15a49b4f-0b2f-4760-9864-66c06aa483be)
 
-
-***
+---
 
 ## Installation
 
@@ -162,7 +170,7 @@ The easiest way to install Akuvox is though [HACS (the Home Assistant Community 
 
 1. If you don't have HACS installed yet, follow the [official installation guide](https://hacs.xyz/docs/installation/manual).
 
-2. Add the Akuvox SmartPlus repository to HACS by clicking here: <a href="https://my.home-assistant.io/redirect/hacs_repository/?owner=nimroddolev&repository=akuvox&category=integration" title="Akuvox HACS repository" target="_blank"><img loading="lazy" src="https://my.home-assistant.io/badges/hacs_repository.svg"></a>
+2. Add the Akuvox SmartPlus repository to HACS by clicking here: <a href="https://my.home-assistant.io/redirect/hacs_repository/?owner=julsh&repository=akuvox&category=integration" title="Akuvox HACS repository" target="_blank"><img loading="lazy" src="https://my.home-assistant.io/badges/hacs_repository.svg"></a>
 
 3. Click `ADD`:
 
@@ -175,13 +183,13 @@ Or:
 ### Manual Installation
 
 1. Using your file browser of choice open the directory for your HA configuration (where you find configuration.yaml).
-2. Create a ```custom_components``` directory if it does not already exist.
-3. Add a subdirectory inside ```custom_components``` named ```akuvox```.
-4. Download all the files from the ```custom_components/akuvox/``` directory in this repository.
-5. Place them into the new ```custom_components/akuvox``` directory you created.
+2. Create a `custom_components` directory if it does not already exist.
+3. Add a subdirectory inside `custom_components` named `akuvox`.
+4. Download all the files from the `custom_components/akuvox/` directory in this repository.
+5. Place them into the new `custom_components/akuvox` directory you created.
 6. Restart Home Assistant.
 
-***
+---
 
 ## Adding the Akuvox Integration
 
@@ -196,7 +204,6 @@ Or:
 4. Select a sign in method:
 
 <img src="https://user-images.githubusercontent.com/1849295/273309170-31e1e9cf-4d93-469a-9a7c-0bc101b4ac4c.png" width="500">
-
 
 ### Method 1: SMS Verification (Recommended)
 
@@ -214,7 +221,6 @@ Sigining in via SMS verification will sign you out from the SmartPlus app on you
 
 <img src="https://user-images.githubusercontent.com/1849295/269956800-e5bb633b-db85-4acb-b90d-effa81c1fa05.png" width="400">
 
-
 ### Method 2: App Tokens (Advanced)
 
 Sigining in using your SmartLife app tokens will allow you to remain signed in to the SmartLife app on your device.
@@ -222,7 +228,7 @@ Sigining in using your SmartLife app tokens will allow you to remain signed in t
 1. Obtain your `auth_token` and `token` values (for help with finding your tokens, please refer to the [Finding you SmartPlus Account Tokens](#finding-your-smartplus-account-tokens) section below).
 
 1. Enter your phone number, `auth_token` and `token` values and click `SUBMIT`:
-<img src="https://user-images.githubusercontent.com/1849295/269958871-071008db-c2d8-4455-a612-eb0a9721ea39.png" width="400">
+   <img src="https://user-images.githubusercontent.com/1849295/269958871-071008db-c2d8-4455-a612-eb0a9721ea39.png" width="400">
 
 ### You should now have one device per Akuvox door camera with a camera and door relay button/s entity
 
@@ -230,13 +236,12 @@ Sigining in using your SmartLife app tokens will allow you to remain signed in t
 
 Once configured, Akuvox cameras & door buttons will appear as a device with a camera entity and a button entity, which when pressed triggers the door relay and opens the doors directly from Home Assistant.
 
-
 ## Configuration
 
 Via the integration's `CONFIGURE` button you can adjust the following:
 
 1. Update your SmartLife account's tokens used to communicate with the Akuvox API. This is particularly useful if you logged into the SmartLife app on your device after adding the integration. For help accessing your account's tokens, please refer to the [Finding you SmartPlus Account Tokens](#finding-your-smartplus-account-tokens) section below.
-   
+
 1. Choose between two options for `akuvox_door_update` event handling:
    - Wait for camera screenshots to become available before triggering the event.
    - Receive the event as soon as it is generated, without waiting for camera screenshots.
@@ -251,7 +256,6 @@ To obtain your SmartPlus account tokens you can use an HTTP proxy (such as [mitm
 
 3. Search for `akuvox`, and you should see the `servers_list` request. Click on it and in the `Requests` tab you should find your `auth_token` and `token` values:
 
-__NOTE: If you see `passwd` instead of `auth_token`, please use the `passwd` value as your `auth_token`.__
+**NOTE: If you see `passwd` instead of `auth_token`, please use the `passwd` value as your `auth_token`.**
 
-![mitmproxy](https://github.com/nimroddolev/akuvox/assets/1849295/d7d2b7ba-cc0e-4f64-b62b-43850bbc90c1)
-
+![mitmproxy](https://github.com/julsh/akuvox/assets/1849295/d7d2b7ba-cc0e-4f64-b62b-43850bbc90c1)
