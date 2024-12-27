@@ -25,15 +25,36 @@ async def async_setup_entry(hass, entry, async_add_devices):
     store = storage.Store(hass, 1, DATA_STORAGE_KEY)
     device_data: dict = await store.async_load() # type: ignore
     door_keys_data = device_data["door_keys_data"]
-    date_format = "%d-%m-%Y %H:%M:%S"
+    date_formats = ["%Y-%m-%d %H:%M:%S", "%d-%m-%Y %H:%M:%S"]
 
     entities = []
     for door_key_data in door_keys_data:
         key_id = door_key_data["key_id"]
         description = door_key_data["description"]
         key_code=door_key_data["key_code"]
-        begin_time = datetime.strptime(str(door_key_data["begin_time"]), date_format)
-        end_time = datetime.strptime(str(door_key_data["end_time"]), date_format)
+
+        # Try parsing with both formats
+        begin_time = None
+        end_time = None
+        time_str_begin = str(door_key_data["begin_time"])
+        time_str_end = str(door_key_data["end_time"])
+
+        for date_format in date_formats:
+            try:
+                begin_time = datetime.strptime(time_str_begin, date_format)
+                end_time = datetime.strptime(time_str_end, date_format)
+                break
+            except ValueError:
+                continue
+
+        if begin_time is None or end_time is None:
+            LOGGER.error(
+                "Could not parse dates for key %s. Received begin_time: %s, end_time: %s. "
+                "Expected formats: %s",
+                key_id, time_str_begin, time_str_end, " or ".join(date_formats)
+            )
+            continue
+
         allowed_times=door_key_data["allowed_times"]
         access_times=door_key_data["access_times"]
         qr_code_url=door_key_data["qr_code_url"]

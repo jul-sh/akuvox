@@ -571,37 +571,64 @@ class AkuvoxApiClient:
         headers: dict | None = None,
     ):
         """Get information from the API."""
-        try:
-            async with async_timeout.timeout(10):
-                func = self.post_request if method == "post" else self.get_request
-                url = url.replace("subdomain.", f"{self._data.subdomain}.")
-                response = await self.hass.async_add_executor_job(func, url, headers, data, 10)
-                return self.process_response(response)
+        delay = 5  # Initial delay in seconds
+        max_retries = 6
+        retry_count = 0
 
-        except asyncio.TimeoutError as exception:
-            # Fix for accounts which use the "single" endpoint instead of "community"
-            app_type_1 = "community"
-            app_type_2 = "single"
-            if f"app/{app_type_1}/" in url:
-                LOGGER.warning(f"Timeout occured for 'app/{app_type_1}' API %s request: %s - Retry using '{app_type_2}'...",
-                               method, url)
-                self._data.app_type = app_type_2
-                url = url.replace("app/"+app_type_1+"/", "app/"+app_type_2+"/")
-                return await self._api_wrapper(method, url, data, headers)
-            if f"app/{app_type_2}/" in url:
-                LOGGER.error("Timeout occured for 'app/%s' API %s request: %s", app_type_2, method, url)
-                self._data.app_type = app_type_1
-            raise AkuvoxApiClientCommunicationError(
-                f"Timeout error fetching information: {exception}",
-            ) from exception
-        except (aiohttp.ClientError, socket.gaierror) as exception:
-            raise AkuvoxApiClientCommunicationError(
-                f"Error fetching information: {exception}",
-            ) from exception
-        except Exception as exception:  # pylint: disable=broad-except
-            raise AkuvoxApiClientError(
-                f"Something really wrong happened! {exception}"
-            ) from exception
+        while retry_count < max_retries:
+            try:
+                async with async_timeout.timeout(10):
+                    func = self.post_request if method == "post" else self.get_request
+                    url = url.replace("subdomain.", f"{self._data.subdomain}.")
+                    response = await self.hass.async_add_executor_job(func, url, headers, data, 10)
+                    return self.process_response(response)
+
+            except asyncio.TimeoutError as exception:
+                # Fix for accounts which use the "single" endpoint instead of "community"
+                app_type_1 = "community"
+                app_type_2 = "single"
+                if f"app/{app_type_1}/" in url:
+                    LOGGER.warning(f"Timeout occured for 'app/{app_type_1}' API %s request: %s - Retry using '{app_type_2}'...",
+                                   method, url)
+                    self._data.app_type = app_type_2
+                    url = url.replace("app/"+app_type_1+"/", "app/"+app_type_2+"/")
+                    return await self._api_wrapper(method, url, data, headers)
+                if f"app/{app_type_2}/" in url:
+                    LOGGER.error("Timeout occured for 'app/%s' API %s request: %s", app_type_2, method, url)
+                    self._data.app_type = app_type_1
+
+                retry_count += 1
+                if retry_count < max_retries:
+                    LOGGER.warning(f"Request failed (attempt {retry_count}/{max_retries}). Retrying in {delay} seconds...")
+                    await asyncio.sleep(delay)
+                    delay *= 4  # Quadruple the delay for next retry
+                    continue
+                raise AkuvoxApiClientCommunicationError(
+                    f"Timeout error fetching information after {max_retries} retries: {exception}",
+                ) from exception
+
+            except (aiohttp.ClientError, socket.gaierror) as exception:
+                retry_count += 1
+                if retry_count < max_retries:
+                    LOGGER.warning(f"Request failed (attempt {retry_count}/{max_retries}). Retrying in {delay} seconds...")
+                    await asyncio.sleep(delay)
+                    delay *= 4  # Quadruple the delay for next retry
+                    continue
+                raise AkuvoxApiClientCommunicationError(
+                    f"Error fetching information after {max_retries} retries: {exception}",
+                ) from exception
+
+            except Exception as exception:  # pylint: disable=broad-except
+                retry_count += 1
+                if retry_count < max_retries:
+                    LOGGER.warning(f"Request failed (attempt {retry_count}/{max_retries}). Retrying in {delay} seconds...")
+                    await asyncio.sleep(delay)
+                    delay *= 4  # Quadruple the delay for next retry
+                    continue
+                raise AkuvoxApiClientError(
+                    f"Something really wrong happened after {max_retries} retries! {exception}"
+                ) from exception
+
         return None
 
     def process_response(self, response):
