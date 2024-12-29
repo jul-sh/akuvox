@@ -25,15 +25,27 @@ async def async_setup_entry(hass, entry, async_add_devices):
     store = storage.Store(hass, 1, DATA_STORAGE_KEY)
     device_data: dict = await store.async_load() # type: ignore
     door_keys_data = device_data["door_keys_data"]
-    date_format = "%d-%m-%Y %H:%M:%S"
+    date_format = "%Y-%m-%d %I:%M:%S %p"
 
     entities = []
     for door_key_data in door_keys_data:
         key_id = door_key_data["key_id"]
         description = door_key_data["description"]
-        key_code=door_key_data["key_code"]
-        begin_time = datetime.strptime(str(door_key_data["begin_time"]), date_format)
-        end_time = datetime.strptime(str(door_key_data["end_time"]), date_format)
+        key_code = door_key_data["key_code"]
+
+        try:
+            begin_time = datetime.strptime(str(door_key_data["begin_time"]), date_format)
+        except ValueError as e:
+            LOGGER.error("Failed to parse begin_time '%s' with format '%s': %s",
+                        door_key_data["begin_time"], date_format, str(e))
+            continue
+
+        try:
+            end_time = datetime.strptime(str(door_key_data["end_time"]), date_format)
+        except ValueError as e:
+            LOGGER.error("Failed to parse end_time '%s' with format '%s': %s",
+                        door_key_data["end_time"], date_format, str(e))
+            continue
         allowed_times=door_key_data["allowed_times"]
         access_times=door_key_data["access_times"]
         qr_code_url=door_key_data["qr_code_url"]
