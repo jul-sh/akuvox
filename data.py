@@ -29,6 +29,7 @@ class AkuvoxData:
     app_type: str = ""
     auth_token: str = ""
     token: str = ""
+    refresh_token: str = ""
     phone_number: str = ""
     wait_for_image_url: bool = False
     rtsp_ip: str = ""
@@ -45,6 +46,7 @@ class AkuvoxData:
                  subdomain: str = None, # type: ignore
                  auth_token: str = None, # type: ignore
                  token: str = None, # type: ignore
+                 refresh_token: str = None, # type: ignore
                  country_code: str = None, # type: ignore
                  phone_number: str = None, # type: ignore
                  wait_for_image_url: bool = False):
@@ -54,6 +56,7 @@ class AkuvoxData:
         self.host = host if host else self.get_value_for_key(entry, "host", host) # type: ignore
         self.auth_token = auth_token if auth_token else self.get_value_for_key(entry, "auth_token", self.host) # type: ignore
         self.token = token if token else self.get_value_for_key(entry, "token", self.token) # type: ignore
+        self.refresh_token = refresh_token if refresh_token else self.get_value_for_key(entry, "refresh_token", self.refresh_token) # type: ignore
         self.phone_number = phone_number if phone_number else self.get_value_for_key(entry, "phone_number", self.phone_number) # type: ignore
         self.wait_for_image_url = wait_for_image_url if wait_for_image_url is not None else bool(self.get_value_for_key(entry, "event_screenshot_options", False) == "wait") # type: ignore
 
@@ -102,6 +105,8 @@ class AkuvoxData:
                 self.auth_token = json_data["auth_token"]
             if "token" in json_data:
                 self.token = json_data["token"]
+            if "refresh_token" in json_data:
+                self.refresh_token = json_data["refresh_token"]
             if "rtmp_server" in json_data:
                 self.rtsp_ip = json_data["rtmp_server"].split(':')[0]
 
@@ -244,6 +249,7 @@ class AkuvoxData:
             "host": self.host,
             "token": self.token,
             "auth_token": self.auth_token,
+            "refresh_token": self.refresh_token,
             "camera_data": self.camera_data,
             "door_relay_data": self.door_relay_data,
             "door_keys_data": self.door_keys_data

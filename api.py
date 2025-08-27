@@ -28,6 +28,8 @@ from .const import (
     API_USERCONF,
     OPENDOOR_API_VERSION,
     API_OPENDOOR,
+    API_REFRESH_TOKEN,
+    TOKEN_REFRESH_INTERVAL_DAYS,
     API_APP_HOST,
     API_GET_PERSONAL_TEMP_KEY_LIST,
     API_GET_PERSONAL_DOOR_LOG
@@ -69,6 +71,17 @@ class AkuvoxApiClient:
 
     async def async_init_api(self) -> bool:
         """Initialize API configuration data."""
+        # Load refresh token from storage if not already set
+        if not self._data.refresh_token:
+            stored_refresh_token = await self._data.async_get_stored_data_for_key("refresh_token")
+            if stored_refresh_token:
+                self._data.refresh_token = stored_refresh_token
+                LOGGER.debug("📱 Loaded refresh token from storage")
+
+        # Check and refresh tokens if needed
+        if self._data.refresh_token:
+            await self.async_check_and_refresh_tokens()
+
         if self._data.host is None or len(self._data.host) == 0:
             self._data.host = "...request in process"
             if await self.async_fetch_rest_server() is False:
@@ -238,6 +251,12 @@ class AkuvoxApiClient:
         if json_data is not None:
             LOGGER.debug("✅ Server list retrieved successfully")
             self._data.parse_sms_login_response(json_data) # type: ignore
+            
+            # Store refresh token if received from servers_list
+            if self._data.refresh_token:
+                await self._data.async_set_stored_data_for_key("refresh_token", self._data.refresh_token)
+                LOGGER.debug("✅ Refresh token captured and stored from servers_list")
+                
             return True
 
         LOGGER.error("❌ Unable to retrieve server list. Try sigining in again / check that your tokens are valid.")
@@ -249,6 +268,13 @@ class AkuvoxApiClient:
         login_data = await self.async_validate_sms_code(phone_number, country_code, sms_code)
         if login_data is not None:
             self._data.parse_sms_login_response(login_data) # type: ignore
+
+            # Store tokens persistently
+            if self._data.refresh_token:
+                await self._data.async_set_stored_data_for_key("refresh_token", self._data.refresh_token)
+                LOGGER.debug("✅ Refresh token captured and stored from SMS login")
+            else:
+                LOGGER.warning("⚠️  No refresh token received from SMS login response")
 
             # Retrieve connected device data
             await self.async_retrieve_device_data()
@@ -305,6 +331,69 @@ class AkuvoxApiClient:
         self._data.auth_token = auth_token
         self._data.token = token
         return await self.async_retrieve_user_data()
+
+    async def async_refresh_token(self) -> bool:
+        """Refresh the authentication tokens using the refresh token."""
+        if not self._data.refresh_token:
+            LOGGER.error("❌ No refresh token available for token refresh")
+            return False
+        
+        LOGGER.debug("📡 Refreshing authentication tokens...")
+        url = f"https://{REST_SERVER_ADDR}:{REST_SERVER_PORT}/{API_REFRESH_TOKEN}"
+        
+        headers = {
+            "x-auth-token": self._data.token,
+            "user-agent": "VBell/7.12.2 (iPhone; iOS 18.5; Scale/2.00)",
+            "content-type": "application/json",
+            "accept": "*/*",
+            "accept-language": "en-US,en;q=0.9"
+        }
+        
+        data = json.dumps({
+            "refresh_token": self._data.refresh_token
+        })
+        
+        json_data = await self._async_api_wrapper(
+            method="post",
+            url=url,
+            headers=headers,
+            data=data
+        )
+        
+        if json_data is not None:
+            if "err_code" in json_data and json_data["err_code"] == "0":
+                if "datas" in json_data:
+                    token_data = json_data["datas"]
+                    
+                    # Update tokens
+                    old_token = self._data.token[:10] + "..." if len(self._data.token) > 10 else self._data.token
+                    old_refresh_token = self._data.refresh_token[:10] + "..." if len(self._data.refresh_token) > 10 else self._data.refresh_token
+                    
+                    self._data.token = token_data.get("token", self._data.token)
+                    self._data.refresh_token = token_data.get("refresh_token", self._data.refresh_token)
+                    
+                    new_token = self._data.token[:10] + "..." if len(self._data.token) > 10 else self._data.token
+                    new_refresh_token = self._data.refresh_token[:10] + "..." if len(self._data.refresh_token) > 10 else self._data.refresh_token
+                    
+                    LOGGER.debug("✅ Tokens refreshed successfully")
+                    LOGGER.debug("   Old token: %s", old_token)
+                    LOGGER.debug("   New token: %s", new_token)
+                    LOGGER.debug("   Old refresh token: %s", old_refresh_token)
+                    LOGGER.debug("   New refresh token: %s", new_refresh_token)
+                    
+                    # Store updated tokens
+                    await self._data.async_set_stored_data_for_key("token", self._data.token)
+                    await self._data.async_set_stored_data_for_key("refresh_token", self._data.refresh_token)
+                    await self._data.async_set_stored_data_for_key("last_token_refresh", 
+                                                                  int(asyncio.get_event_loop().time()))
+                    
+                    return True
+                
+            LOGGER.error("❌ Token refresh failed: %s", json_data.get("message", "Unknown error"))
+        else:
+            LOGGER.error("❌ Token refresh request failed")
+        
+        return False
 
     async def async_user_conf(self):
         """Request the user's configuration data."""
@@ -635,4 +724,23 @@ class AkuvoxApiClient:
         self._data.subdomain = value if key == "subdomain" else self._data.subdomain
         self._data.auth_token = value if key == "auth_token" else self._data.auth_token
         self._data.token = value if key == "token" else self._data.token
+        self._data.refresh_token = value if key == "refresh_token" else self._data.refresh_token
         self._data.wait_for_image_url = value if key == "wait_for_image_url" else self._data.wait_for_image_url
+
+    async def async_check_and_refresh_tokens(self) -> bool:
+        """Check if tokens need refresh and refresh if necessary (every 6 days)."""
+        last_refresh = await self._data.async_get_stored_data_for_key("last_token_refresh")
+        current_time = int(asyncio.get_event_loop().time())
+        
+        # Refresh tokens every N days (configurable) - 1 day safety buffer before 7-day expiry
+        refresh_interval = TOKEN_REFRESH_INTERVAL_DAYS * 24 * 60 * 60  # Convert days to seconds
+        
+        if last_refresh is None or (current_time - last_refresh) >= refresh_interval:
+            LOGGER.debug("🔄 Token refresh needed (last refresh: %s)", 
+                        last_refresh if last_refresh else "never")
+            return await self.async_refresh_token()
+        
+        time_until_refresh = refresh_interval - (current_time - last_refresh)
+        days_until_refresh = time_until_refresh // (24 * 60 * 60)
+        LOGGER.debug("✅ Tokens are fresh (refresh in %d days)", days_until_refresh)
+        return True

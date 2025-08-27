@@ -176,6 +176,7 @@ class AkuvoxFlowHandler(config_entries.ConfigFlow, domain=DOMAIN):
                 "phone_number", "").replace("-", "").replace(" ", "")
             token: str = user_input.get("token", "")
             auth_token: str = user_input.get("auth_token", "")
+            refresh_token: str = user_input.get("refresh_token", "")
             subdomain: str = user_input.get("subdomain", "Default")
             subdomain = subdomain if subdomain != "Default" else helpers.get_subdomain_from_country_code(country_code)
 
@@ -185,6 +186,7 @@ class AkuvoxFlowHandler(config_entries.ConfigFlow, domain=DOMAIN):
                 "phone_number": phone_number,
                 "token": token,
                 "auth_token": auth_token,
+                "refresh_token": refresh_token,
                 "subdomain": subdomain
             }
 
@@ -368,6 +370,11 @@ class AkuvoxFlowHandler(config_entries.ConfigFlow, domain=DOMAIN):
                 msg=None,
                 default=user_input.get("token", DEFAULT_TOKEN),  # type: ignore
                 description="Your SmartPlus account's token string"): str,
+            vol.Optional(
+                "refresh_token",
+                msg=None,
+                default=user_input.get("refresh_token", ""),  # type: ignore
+                description="Your SmartPlus account's refresh_token string (optional)"): str,
             vol.Optional("subdomain",
                          default="Default", # type: ignore
                          description="Manually set the regional API subdomain"):
@@ -425,6 +432,9 @@ class AkuvoxOptionsFlowHandler(config_entries.OptionsFlow):
             ): str,
             vol.Optional("token",
                          default=self.get_data_key_value("token", False) # type: ignore
+            ): str,
+            vol.Optional("refresh_token",
+                         default=self.get_data_key_value("refresh_token", False) # type: ignore
             ): str,
             vol.Optional("subdomain",
                 default=current_subdomain, # type: ignore

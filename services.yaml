@@ -1,0 +1,37 @@
+update_tokens:
+  name: Update Tokens
+  description: Update the authentication tokens for the Akuvox integration
+  fields:
+    entry_id:
+      name: Entry ID
+      description: The config entry ID of the Akuvox integration
+      required: true
+      example: "01234567890abcdef"
+      selector:
+        text:
+    token:
+      name: Token
+      description: The new authentication token obtained from SmartPlus
+      required: true
+      example: "your_new_token_here"
+      selector:
+        text:
+    refresh_token:
+      name: Refresh Token
+      description: The new refresh token obtained from SmartPlus (optional)
+      required: false
+      example: "your_new_refresh_token_here"
+      selector:
+        text:
+
+refresh_tokens:
+  name: Refresh Tokens
+  description: Refresh the authentication tokens using the stored refresh token
+  fields:
+    entry_id:
+      name: Entry ID
+      description: The config entry ID of the Akuvox integration
+      required: true
+      example: "01234567890abcdef"
+      selector:
+        text:

@@ -44,6 +44,9 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     await hass.config_entries.async_forward_entry_setups(entry, PLATFORMS)
     entry.async_on_unload(entry.add_update_listener(async_reload_entry))
 
+    # Register services
+    await async_setup_services(hass)
+
     return True
 
 
@@ -123,4 +126,93 @@ async def async_update_configuration(hass: HomeAssistant, entry: ConfigEntry) ->
                     LOGGER.debug(" - %s = %s", key, str_value)
     except Exception as error:
         LOGGER.warning("Unable to update configuration: %s", str(error))
+
+# Services
+
+async def async_setup_services(hass: HomeAssistant) -> None:
+    """Set up services for the Akuvox integration."""
+    
+    async def async_update_tokens_service(call):
+        """Handle the update_tokens service call."""
+        entry_id = call.data.get("entry_id")
+        token = call.data.get("token")
+        refresh_token = call.data.get("refresh_token", "")
+        
+        if not entry_id or not token:
+            LOGGER.error("❌ Service call missing required parameters: entry_id and token")
+            return
+        
+        # Find the coordinator for the entry
+        if DOMAIN not in hass.data or entry_id not in hass.data[DOMAIN]:
+            LOGGER.error("❌ Entry ID %s not found", entry_id)
+            return
+        
+        coordinator: AkuvoxDataUpdateCoordinator = hass.data[DOMAIN][entry_id]
+        client: AkuvoxApiClient = coordinator.client
+        
+        try:
+            # Update tokens
+            old_token = client._data.token[:10] + "..." if len(client._data.token) > 10 else client._data.token
+            client._data.token = token
+            if refresh_token:
+                client._data.refresh_token = refresh_token
+            
+            # Store updated tokens
+            await client._data.async_set_stored_data_for_key("token", token)
+            if refresh_token:
+                await client._data.async_set_stored_data_for_key("refresh_token", refresh_token)
+            
+            new_token = client._data.token[:10] + "..." if len(client._data.token) > 10 else client._data.token
+            
+            LOGGER.info("✅ Tokens updated successfully via service call")
+            LOGGER.debug("   Old token: %s", old_token)
+            LOGGER.debug("   New token: %s", new_token)
+            
+            # Test the new tokens by retrieving user data
+            if await client.async_retrieve_user_data():
+                LOGGER.info("✅ Token validation successful - user data retrieved")
+            else:
+                LOGGER.warning("⚠️  Token validation failed - unable to retrieve user data")
+            
+        except Exception as error:
+            LOGGER.error("❌ Failed to update tokens: %s", error)
+    
+    async def async_refresh_tokens_service(call):
+        """Handle the refresh_tokens service call."""
+        entry_id = call.data.get("entry_id")
+        
+        if not entry_id:
+            LOGGER.error("❌ Service call missing required parameter: entry_id")
+            return
+        
+        # Find the coordinator for the entry
+        if DOMAIN not in hass.data or entry_id not in hass.data[DOMAIN]:
+            LOGGER.error("❌ Entry ID %s not found", entry_id)
+            return
+        
+        coordinator: AkuvoxDataUpdateCoordinator = hass.data[DOMAIN][entry_id]
+        client: AkuvoxApiClient = coordinator.client
+        
+        try:
+            if await client.async_refresh_token():
+                LOGGER.info("✅ Tokens refreshed successfully via service call")
+            else:
+                LOGGER.error("❌ Token refresh failed")
+        except Exception as error:
+            LOGGER.error("❌ Failed to refresh tokens: %s", error)
+    
+    # Register services
+    hass.services.async_register(
+        DOMAIN,
+        "update_tokens",
+        async_update_tokens_service,
+        schema=None
+    )
+    
+    hass.services.async_register(
+        DOMAIN,
+        "refresh_tokens",
+        async_refresh_tokens_service,
+        schema=None
+    )
 

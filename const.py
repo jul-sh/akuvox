@@ -466,6 +466,7 @@ API_SERVERS_LIST = "servers_list"
 API_SMS_LOGIN = "sms_login"
 API_USERCONF = "userconf"
 API_OPENDOOR = "opendoor"
+API_REFRESH_TOKEN = "refresh_token"
 
 API_APP_HOST = "subdomain.akuvox.com/web-server/v3/app/"
 API_GET_PERSONAL_TEMP_KEY_LIST = "tempKey/getPersonalTempKeyList?row=20&page=1"
@@ -474,6 +475,9 @@ API_GET_PERSONAL_DOOR_LOG = "log/getDoorLog?row=1"
 TEMP_KEY_QR_HOST = "subdomain.akuvox.com"
 
 DATA_STORAGE_KEY = "akuvox_data_storage_key"
+
+# Token refresh settings
+TOKEN_REFRESH_INTERVAL_DAYS = 6  # Refresh every 6 days (1 day before 7-day expiry)
 
 CAPTURE_TIME_KEY = "CaptureTime"
 PIC_URL_KEY = "PicUrl"
