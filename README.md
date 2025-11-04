@@ -15,6 +15,20 @@ For troubleshooting and general discussion please join the [discussion in the Ho
 
 ---
 
+## Development Helpers
+
+To exercise the token refresh logic outside Home Assistant, two helper scripts live under `scripts/`:
+
+```
+python3 scripts/akuvox_request_sms.py --country-code 1 --phone 2121239876 --subdomain ucloud
+python3 scripts/akuvox_integration_refresh_test.py --country-code 1 --phone 2121239876 \
+  --subdomain ucloud --sms-code 123456
+```
+
+The integration test script runs the production client end-to-end: it performs the SMS login, rotates the session token three times, and confirms the door relay still opens with the latest token.
+
+---
+
 ## Show Your Support
 
 If you find this integration useful, consider showing your support:
@@ -236,7 +250,7 @@ Once configured, Akuvox cameras & door buttons will appear as a device with a ca
 Via the integration's `CONFIGURE` button you can adjust the following:
 
 1. Update your SmartLife account's tokens used to communicate with the Akuvox API. This is particularly useful if you logged into the SmartLife app on your device after adding the integration. For help accessing your account's tokens, please refer to the [Finding you SmartPlus Account Tokens](#finding-your-smartplus-account-tokens) section below.
-   
+
 1. Choose between two options for `akuvox_door_update` event handling:
    - Wait for camera screenshots to become available before triggering the event.
    - Receive the event as soon as it is generated, without waiting for camera screenshots.
@@ -254,4 +268,3 @@ To obtain your SmartPlus account tokens you can use an HTTP proxy (such as [mitm
     You should find your `auth_token` and `token` values:
 
 ![instructions](https://github.com/user-attachments/assets/c1550332-4499-48f0-a55e-34dea410e558)
-

@@ -477,7 +477,7 @@ TEMP_KEY_QR_HOST = "subdomain.akuvox.com"
 DATA_STORAGE_KEY = "akuvox_data_storage_key"
 
 # Token refresh settings
-TOKEN_REFRESH_INTERVAL_DAYS = 6  # Refresh every 6 days (1 day before 7-day expiry)
+TOKEN_REFRESH_INTERVAL_DAYS = 1  # Refresh every day (24h window before expiry)
 
 CAPTURE_TIME_KEY = "CaptureTime"
 PIC_URL_KEY = "PicUrl"
