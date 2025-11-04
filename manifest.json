@@ -1,18 +1,12 @@
 {
   "domain": "akuvox",
   "name": "Akuvox SmartPlus",
-  "codeowners": [
-    "@nimroddolev"
-  ],
+  "codeowners": ["@jul-sh"],
   "config_flow": true,
-  "dependencies": [
-    "button",
-    "generic",
-    "sensor"
-  ],
-  "documentation": "https://github.com/nimroddolev/akuvox",
+  "dependencies": ["button", "generic", "sensor"],
+  "documentation": "https://github.com/jul-sh/akuvox",
   "integration_type": "hub",
   "iot_class": "cloud_polling",
-  "issue_tracker": "https://github.com/nimroddolev/akuvox/issues",
+  "issue_tracker": "https://github.com/jul-sh/akuvox/issues",
   "version": "v0.2.0-beta3"
 }
