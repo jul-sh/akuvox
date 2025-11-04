@@ -1,9 +1,9 @@
 [![hacs_badge](https://img.shields.io/badge/HACS-Default-41BDF5.svg)](https://github.com/hacs/integration )
-![version](https://img.shields.io/github/v/release/nimroddolev/akuvox)
-[![Community Forum][forum-shield]][forum]
-<a href="https://www.buymeacoffee.com/nimroddolev"><img src="https://www.buymeacoffee.com/assets/img/custom_images/orange_img.png" height="20px"></a>
+![version](https://img.shields.io/github/v/release/jul-sh/akuvox)
 
 # Akuvox SmartPlus Integration for Home Assistant
+
+> **⚠️ IMPORTANT NOTICE:** This is a fork of https://github.com/nimroddolev/akuvox, as the original repository appears to be unmaintained. This fork includes a critical fix for token refresh implementation which is now required by Akuvox's updated API.
 
 <img src="https://user-images.githubusercontent.com/1849295/269948645-08c99fe2-253e-49cc-b38b-2a2937c2726d.png" width="100">
 
@@ -15,9 +15,23 @@ For troubleshooting and general discussion please join the [discussion in the Ho
 
 ---
 
+## Development Helpers
+
+To exercise the token refresh logic outside Home Assistant, two helper scripts live under `scripts/`:
+
+```
+python3 scripts/akuvox_request_sms.py --country-code 1 --phone 2121239876 --subdomain ucloud
+python3 scripts/akuvox_integration_refresh_test.py --country-code 1 --phone 2121239876 \
+  --subdomain ucloud --sms-code 123456
+```
+
+The integration test script runs the production client end-to-end: it performs the SMS login, rotates the session token three times, and confirms the door relay still opens with the latest token.
+
+---
+
 ## Show Your Support
 
-If you find this integration useful, consider showing your support:
+If you find this integration useful, consider showing your support to the original author who created this integration:
 <a href="https://www.buymeacoffee.com/nimroddolev" target="_blank"><img src="https://cdn.buymeacoffee.com/buttons/v2/default-yellow.png" alt="Buy Me A Coffee" style="height: 30px !important;width: 140px !important;" ></a>
 
 ---
@@ -148,7 +162,7 @@ action:
       mwessage: >-
         {{ trigger.event.data.Location }} door opened by {{ trigger.event.data.Initiator }}
 ```
-![notification](https://github.com/nimroddolev/akuvox/assets/1849295/15a49b4f-0b2f-4760-9864-66c06aa483be)
+![notification](https://github.com/jul-sh/akuvox/assets/1849295/15a49b4f-0b2f-4760-9864-66c06aa483be)
 
 
 
@@ -236,7 +250,7 @@ Once configured, Akuvox cameras & door buttons will appear as a device with a ca
 Via the integration's `CONFIGURE` button you can adjust the following:
 
 1. Update your SmartLife account's tokens used to communicate with the Akuvox API. This is particularly useful if you logged into the SmartLife app on your device after adding the integration. For help accessing your account's tokens, please refer to the [Finding you SmartPlus Account Tokens](#finding-your-smartplus-account-tokens) section below.
-   
+
 1. Choose between two options for `akuvox_door_update` event handling:
    - Wait for camera screenshots to become available before triggering the event.
    - Receive the event as soon as it is generated, without waiting for camera screenshots.
@@ -254,4 +268,3 @@ To obtain your SmartPlus account tokens you can use an HTTP proxy (such as [mitm
     You should find your `auth_token` and `token` values:
 
 ![instructions](https://github.com/user-attachments/assets/c1550332-4499-48f0-a55e-34dea410e558)
-

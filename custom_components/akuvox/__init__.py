@@ -1,7 +1,7 @@
 """Custom integration to integrate akuvox with Home Assistant.
 
 For more details about this integration, please refer to
-https://github.com/nimroddolev/akuvox
+https://github.com/jul-sh/akuvox
 """
 from __future__ import annotations
 
