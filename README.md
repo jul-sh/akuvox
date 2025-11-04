@@ -15,6 +15,20 @@ For troubleshooting and general discussion please join the [discussion in the Ho
 
 ---
 
+## Development Helpers
+
+To exercise the token refresh logic outside Home Assistant, two helper scripts live under `scripts/`:
+
+```
+python3 scripts/akuvox_request_sms.py --country-code 1 --phone 2122561078 --subdomain ucloud
+python3 scripts/akuvox_integration_refresh_test.py --country-code 1 --phone 2122561078 \
+  --subdomain ucloud --sms-code 123456
+```
+
+The integration test script runs the production client end-to-end: it performs the SMS login, rotates the session token three times, and confirms the door relay still opens with the latest token.
+
+---
+
 ## Show Your Support
 
 If you find this integration useful, consider showing your support:

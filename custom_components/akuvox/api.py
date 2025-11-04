@@ -4,6 +4,7 @@ from __future__ import annotations
 import asyncio
 import socket
 import json
+import time
 
 from homeassistant.core import HomeAssistant
 
@@ -384,8 +385,10 @@ class AkuvoxApiClient:
                     # Store updated tokens
                     await self._data.async_set_stored_data_for_key("token", self._data.token)
                     await self._data.async_set_stored_data_for_key("refresh_token", self._data.refresh_token)
-                    await self._data.async_set_stored_data_for_key("last_token_refresh", 
-                                                                  int(asyncio.get_event_loop().time()))
+                    await self._data.async_set_stored_data_for_key(
+                        "last_token_refresh",
+                        int(time.time())
+                    )
                     
                     return True
                 
@@ -729,18 +732,34 @@ class AkuvoxApiClient:
 
     async def async_check_and_refresh_tokens(self) -> bool:
         """Check if tokens need refresh and refresh if necessary (every 6 days)."""
-        last_refresh = await self._data.async_get_stored_data_for_key("last_token_refresh")
-        current_time = int(asyncio.get_event_loop().time())
-        
-        # Refresh tokens every N days (configurable) - 1 day safety buffer before 7-day expiry
+        last_refresh_raw = await self._data.async_get_stored_data_for_key("last_token_refresh")
+        last_refresh: int | None = None
+        if last_refresh_raw is not None:
+            try:
+                last_refresh = int(last_refresh_raw)
+            except (TypeError, ValueError):
+                LOGGER.warning("⚠️ Stored last_token_refresh value %s is invalid; forcing refresh.", last_refresh_raw)
+                last_refresh = None
+
+        current_time = int(time.time())
+
+        # Refresh tokens every N days (configurable) - now aligned with 24h expiry window
         refresh_interval = TOKEN_REFRESH_INTERVAL_DAYS * 24 * 60 * 60  # Convert days to seconds
-        
-        if last_refresh is None or (current_time - last_refresh) >= refresh_interval:
-            LOGGER.debug("🔄 Token refresh needed (last refresh: %s)", 
-                        last_refresh if last_refresh else "never")
+
+        needs_refresh = (
+            last_refresh is None
+            or current_time < last_refresh  # Clock reset or corrupted timestamp
+            or (current_time - last_refresh) >= refresh_interval
+        )
+
+        if needs_refresh:
+            LOGGER.debug(
+                "🔄 Token refresh needed (last refresh: %s)",
+                "never" if last_refresh is None else last_refresh,
+            )
             return await self.async_refresh_token()
-        
+
         time_until_refresh = refresh_interval - (current_time - last_refresh)
-        days_until_refresh = time_until_refresh // (24 * 60 * 60)
-        LOGGER.debug("✅ Tokens are fresh (refresh in %d days)", days_until_refresh)
+        hours_until_refresh = time_until_refresh // 3600
+        LOGGER.debug("✅ Tokens are fresh (refresh in %d hour(s))", hours_until_refresh)
         return True
