@@ -41,11 +41,11 @@ If you want to contribute to this please read the [Contribution guidelines](CONT
 
 ***
 
-[akuvox]: https://github.com/nimroddolev/akuvox
-[buymecoffee]: https://www.buymeacoffee.com/nimroddolev
+[akuvox]: https://github.com/jul-sh/akuvox
+[buymecoffee]: https://www.buymeacoffee.com/jul-sh
 [buymecoffeebadge]: https://img.shields.io/badge/buy%20me%20a%20coffee-donate-yellow.svg?style=for-the-badge
-[commits-shield]: https://img.shields.io/github/commit-activity/y/nimroddolev/akuvox.svg?style=for-the-badge
-[commits]: https://github.com/nimroddolev/akuvox/commits/main
+[commits-shield]: https://img.shields.io/github/commit-activity/y/jul-sh/akuvox.svg?style=for-the-badge
+[commits]: https://github.com/jul-sh/akuvox/commits/main
 [hacs]: https://github.com/hacs/integration
 [hacsbadge]: https://img.shields.io/badge/HACS-Custom-orange.svg?style=for-the-badge
 [discord]: https://discord.gg/Qa5fW2R
@@ -53,7 +53,7 @@ If you want to contribute to this please read the [Contribution guidelines](CONT
 [exampleimg]: example.png
 [forum-shield]: https://img.shields.io/badge/community-forum-brightgreen.svg?style=for-the-badge
 [forum]: https://community.home-assistant.io/
-[license-shield]: https://img.shields.io/github/license/nimroddolev/akuvox.svg?style=for-the-badge
+[license-shield]: https://img.shields.io/github/license/jul-sh/akuvox.svg?style=for-the-badge
 [maintenance-shield]: https://img.shields.io/badge/maintainer-Nimrod%20Dolev%20%40ludeeus-blue.svg?style=for-the-badge
-[releases-shield]: https://img.shields.io/github/release/nimroddolev/akuvox.svg?style=for-the-badge
-[releases]: https://github.com/nimroddolev/akuvox/releases
+[releases-shield]: https://img.shields.io/github/release/jul-sh/akuvox.svg?style=for-the-badge
+[releases]: https://github.com/jul-sh/akuvox/releases
