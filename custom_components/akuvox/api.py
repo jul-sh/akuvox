@@ -524,6 +524,12 @@ class AkuvoxApiClient:
             "sec-fetch-dest": "empty"
         }
 
+        LOGGER.debug(
+            "📡 Requesting personal door log (app_type=%s, subdomain=%s)",
+            "single" if self._data.app_type == "single" else "community",
+            self._data.subdomain or "unknown",
+        )
+
         json_data: list = await self._async_api_wrapper(method="get",
                                                         url=url,
                                                         headers=headers,
@@ -534,6 +540,10 @@ class AkuvoxApiClient:
             self.switch_activities_host()
             host = self.get_activities_host()
             url = f"https://{host}/{API_GET_PERSONAL_DOOR_LOG}"
+            LOGGER.debug(
+                "📡 Retrying personal door log with alternate app_type=%s",
+                "single" if self._data.app_type == "single" else "community",
+            )
             json_data = await self._async_api_wrapper(method="get",
                                                       url=url,
                                                       headers=headers,
@@ -542,7 +552,11 @@ class AkuvoxApiClient:
         if json_data is not None and len(json_data) > 0:
             return json_data
 
-        LOGGER.error("❌ Unable to retrieve user's personal door log")
+        LOGGER.error(
+            "❌ Unable to retrieve user's personal door log (app_type=%s, subdomain=%s)",
+            "single" if self._data.app_type == "single" else "community",
+            self._data.subdomain or "unknown",
+        )
         return None
 
     ###################
@@ -565,7 +579,20 @@ class AkuvoxApiClient:
                 if not url.endswith(API_GET_PERSONAL_DOOR_LOG):
                     LOGGER.debug("⏳ Sending request to %s", url)
                 response = await self.hass.async_add_executor_job(func, url, headers, data, 10)
-                return self.process_response(response, url)
+                json_data = self.process_response(response, url)
+                if json_data is None and API_GET_PERSONAL_DOOR_LOG in url:
+                    body_preview = ""
+                    if hasattr(response, "text"):
+                        body_preview = response.text[:500]
+                        for sensitive in (self._data.token, self._data.auth_token):
+                            if sensitive:
+                                body_preview = body_preview.replace(str(sensitive), "***")
+                    LOGGER.error(
+                        "Personal door log HTTP %s response (truncated body): %s",
+                        getattr(response, "status_code", "unknown"),
+                        body_preview,
+                    )
+                return json_data
 
         except asyncio.TimeoutError as exception:
             # Fix for accounts which use the "single" endpoint instead of "community"
@@ -601,6 +628,11 @@ class AkuvoxApiClient:
 
     def process_response(self, response, url):
         """Process response and return dict with data."""
+        safe_url = url
+        for sensitive in (self._data.token, self._data.auth_token):
+            if sensitive:
+                safe_url = safe_url.replace(str(sensitive), "***")
+
         if response.status_code == 200:
             # Assuming the response is valid JSON, parse it
             try:
@@ -618,17 +650,23 @@ class AkuvoxApiClient:
                         if "data" in json_data:
                             return json_data["data"]
                         return json_data
+                    LOGGER.error(
+                        "Akuvox API returned error payload (code=%s, message=%s) for %s",
+                        json_data.get("code"),
+                        json_data.get("message") or json_data.get("msg"),
+                        safe_url,
+                    )
                     return []
 
                 LOGGER.warning("🤨 Response: %s", str(json_data))
             except Exception as error:
                 LOGGER.error("❌ Error occurred when parsing JSON: %s\nRequest: %s",
                              error,
-                             url)
+                             safe_url)
         else:
             LOGGER.debug("❌ Error: HTTP status code = %s for request to %s",
                          response.status_code,
-                         url)
+                         safe_url)
         return None
 
     async def async_make_get_request(self, url, headers, data=None):
