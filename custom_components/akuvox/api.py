@@ -264,12 +264,12 @@ class AkuvoxApiClient:
         if json_data is not None:
             LOGGER.debug("✅ Server list retrieved successfully")
             self._data.parse_sms_login_response(json_data) # type: ignore
-            
+
             # Store refresh token if received from servers_list
             if self._data.refresh_token:
                 await self._data.async_set_stored_data_for_key("refresh_token", self._data.refresh_token)
                 LOGGER.debug("✅ Refresh token captured and stored from servers_list")
-                
+
             return True
 
         LOGGER.error("❌ Unable to retrieve server list. Try sigining in again / check that your tokens are valid.")
@@ -350,7 +350,7 @@ class AkuvoxApiClient:
         if not self._data.refresh_token:
             LOGGER.error("❌ No refresh token available for token refresh")
             return False
-        
+
         LOGGER.debug("📡 Refreshing authentication tokens...")
         url = f"https://gate.{self._data.subdomain}.akuvox.com:{REST_SERVER_PORT}/{API_REFRESH_TOKEN}"
 
@@ -366,35 +366,35 @@ class AkuvoxApiClient:
         data = json.dumps({
             "refresh_token": self._data.refresh_token
         })
-        
+
         json_data = await self._async_api_wrapper(
             method="post",
             url=url,
             headers=headers,
             data=data
         )
-        
+
         if json_data is not None:
             if "err_code" in json_data and json_data["err_code"] == "0":
                 if "datas" in json_data:
                     token_data = json_data["datas"]
-                    
+
                     # Update tokens
                     old_token = self._data.token[:10] + "..." if len(self._data.token) > 10 else self._data.token
                     old_refresh_token = self._data.refresh_token[:10] + "..." if len(self._data.refresh_token) > 10 else self._data.refresh_token
-                    
+
                     self._data.token = token_data.get("token", self._data.token)
                     self._data.refresh_token = token_data.get("refresh_token", self._data.refresh_token)
-                    
+
                     new_token = self._data.token[:10] + "..." if len(self._data.token) > 10 else self._data.token
                     new_refresh_token = self._data.refresh_token[:10] + "..." if len(self._data.refresh_token) > 10 else self._data.refresh_token
-                    
+
                     LOGGER.debug("✅ Tokens refreshed successfully")
                     LOGGER.debug("   Old token: %s", old_token)
                     LOGGER.debug("   New token: %s", new_token)
                     LOGGER.debug("   Old refresh token: %s", old_refresh_token)
                     LOGGER.debug("   New refresh token: %s", new_refresh_token)
-                    
+
                     # Store updated tokens
                     await self._data.async_set_stored_data_for_key("token", self._data.token)
                     await self._data.async_set_stored_data_for_key("refresh_token", self._data.refresh_token)
@@ -402,13 +402,13 @@ class AkuvoxApiClient:
                         "last_token_refresh",
                         int(time.time())
                     )
-                    
+
                     return True
-                
+
             LOGGER.error("❌ Token refresh failed: %s", json_data.get("message", "Unknown error"))
         else:
             LOGGER.error("❌ Token refresh request failed")
-        
+
         return False
 
     async def async_user_conf(self):
