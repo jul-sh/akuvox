@@ -1,4 +1,5 @@
 """Akuvox Data Class."""
+
 from __future__ import annotations
 # from dataclasses import dataclass
 
@@ -18,11 +19,12 @@ from .helpers import AkuvoxHelpers
 
 helpers = AkuvoxHelpers()
 
+
 # @dataclass
 class AkuvoxData:
     """Data class holding key data from API requests."""
 
-    hass: HomeAssistant = None # type: ignore
+    hass: HomeAssistant = None  # type: ignore
     host: str = ""
     location_dict: dict = {}
     subdomain: str = ""
@@ -38,53 +40,90 @@ class AkuvoxData:
     door_relay_data = []
     door_keys_data = []
 
-
-    def __init__(self,
-                 entry: ConfigEntry,
-                 hass: HomeAssistant,
-                 host: str = None, # type: ignore
-                 subdomain: str = None, # type: ignore
-                 auth_token: str = None, # type: ignore
-                 token: str = None, # type: ignore
-                 refresh_token: str = None, # type: ignore
-                 country_code: str = None, # type: ignore
-                 phone_number: str = None, # type: ignore
-                 wait_for_image_url: bool = False):
+    def __init__(
+        self,
+        entry: ConfigEntry,
+        hass: HomeAssistant,
+        host: str = None,  # type: ignore
+        subdomain: str = None,  # type: ignore
+        auth_token: str = None,  # type: ignore
+        token: str = None,  # type: ignore
+        refresh_token: str = None,  # type: ignore
+        country_code: str = None,  # type: ignore
+        phone_number: str = None,  # type: ignore
+        wait_for_image_url: bool = False,
+    ):
         """Initialize the Akuvox API client."""
 
         self.hass = hass if hass else self.hass
-        self.host = host if host else self.get_value_for_key(entry, "host", host) # type: ignore
-        self.auth_token = auth_token if auth_token else self.get_value_for_key(entry, "auth_token", self.host) # type: ignore
-        self.token = token if token else self.get_value_for_key(entry, "token", self.token) # type: ignore
-        self.refresh_token = refresh_token if refresh_token else self.get_value_for_key(entry, "refresh_token", self.refresh_token) # type: ignore
-        self.phone_number = phone_number if phone_number else self.get_value_for_key(entry, "phone_number", self.phone_number) # type: ignore
-        self.wait_for_image_url = wait_for_image_url if wait_for_image_url is not None else bool(self.get_value_for_key(entry, "event_screenshot_options", False) == "wait") # type: ignore
+        self.host = host if host else self.get_value_for_key(entry, "host", host)  # type: ignore
+        self.auth_token = (
+            auth_token
+            if auth_token
+            else self.get_value_for_key(entry, "auth_token", self.host)
+        )  # type: ignore
+        self.token = (
+            token if token else self.get_value_for_key(entry, "token", self.token)
+        )  # type: ignore
+        self.refresh_token = (
+            refresh_token
+            if refresh_token
+            else self.get_value_for_key(entry, "refresh_token", self.refresh_token)
+        )  # type: ignore
+        self.phone_number = (
+            phone_number
+            if phone_number
+            else self.get_value_for_key(entry, "phone_number", self.phone_number)
+        )  # type: ignore
+        self.wait_for_image_url = (
+            wait_for_image_url
+            if wait_for_image_url is not None
+            else bool(
+                self.get_value_for_key(entry, "event_screenshot_options", False)
+                == "wait"
+            )
+        )  # type: ignore
 
-        self.subdomain = subdomain if subdomain else self.get_value_for_key(entry, "subdomain", self.subdomain) # type: ignore
+        self.subdomain = (
+            subdomain
+            if subdomain
+            else self.get_value_for_key(entry, "subdomain", self.subdomain)
+        )  # type: ignore
         if not self.subdomain:
             if not country_code:
                 try:
                     if entry and entry.data:
                         entry_data = dict(entry.data)
-                        country_name_code = str(entry_data.get("country", hass.config.country))
+                        country_name_code = str(
+                            entry_data.get("country", hass.config.country)
+                        )
                         if country_name_code in LOCATIONS_DICT:
-                            self.location_dict = LOCATIONS_DICT.get(country_name_code) # type: ignore
-                            self.subdomain = self.location_dict.get("subdomain", "ecloud") # type: ignore
+                            self.location_dict = LOCATIONS_DICT.get(country_name_code)  # type: ignore
+                            self.subdomain = self.location_dict.get(
+                                "subdomain", "ucloud"
+                            )  # type: ignore
                 except Exception as error:
                     LOGGER.debug("Unable to use country due to error: %s", error)
             if not self.subdomain:
-                self.subdomain = "ecloud"
+                self.subdomain = "ucloud"
 
-        self.hass.add_job(self.async_set_stored_data_for_key, "wait_for_image_url", self.wait_for_image_url)
+        self.hass.add_job(
+            self.async_set_stored_data_for_key,
+            "wait_for_image_url",
+            self.wait_for_image_url,
+        )
 
     def get_value_for_key(self, entry: ConfigEntry, key: str, default):
         """Get the value for a given key. 1st check: configured, 2nd check: options, 3rd check: data."""
         if entry is not None:
             if isinstance(entry, dict):
-                if key in entry["configured"]: # type: ignore
-                    return entry["configured"][key] # type: ignore
+                if key in entry["configured"]:  # type: ignore
+                    return entry["configured"][key]  # type: ignore
                 return default
-            override = entry.options.get("override", False) or key == "event_screenshot_options"
+            override = (
+                entry.options.get("override", False)
+                or key == "event_screenshot_options"
+            )
             placeholder = entry.data.get(key, None)
             if override:
                 return entry.options.get(key, placeholder)
@@ -108,7 +147,7 @@ class AkuvoxData:
             if "refresh_token" in json_data:
                 self.refresh_token = json_data["refresh_token"]
             if "rtmp_server" in json_data:
-                self.rtsp_ip = json_data["rtmp_server"].split(':')[0]
+                self.rtsp_ip = json_data["rtmp_server"].split(":")[0]
 
     def parse_userconf_data(self, json_data: dict):
         """Parse the userconf API response."""
@@ -123,11 +162,15 @@ class AkuvoxData:
                     mac = dev_data["mac"]
 
                     # Camera
-                    if "location" in dev_data and "rtsp_pwd" in dev_data and "mac" in dev_data:
+                    if (
+                        "location" in dev_data
+                        and "rtsp_pwd" in dev_data
+                        and "mac" in dev_data
+                    ):
                         password = dev_data["rtsp_pwd"]
                         camera_dict = {
                             "name": name,
-                            "video_url": f"rtsp://ak:{password}@{self.rtsp_ip}:554/{mac}"
+                            "video_url": f"rtsp://ak:{password}@{self.rtsp_ip}:554/{mac}",
                         }
                         self.camera_data.append(camera_dict)
 
@@ -136,12 +179,14 @@ class AkuvoxData:
                         for relay in dev_data["relay"]:
                             relay_id = relay["relay_id"]
                             door_name = relay["door_name"].strip()
-                            self.door_relay_data.append({
-                                "name": name,
-                                "door_name": door_name,
-                                "relay_id": relay_id,
-                                "mac": mac
-                            })
+                            self.door_relay_data.append(
+                                {
+                                    "name": name,
+                                    "door_name": door_name,
+                                    "relay_id": relay_id,
+                                    "mac": mac,
+                                }
+                            )
 
         # Log parsed entities
         if len(self.camera_data) > 0:
@@ -166,30 +211,38 @@ class AkuvoxData:
             door_keys_data["access_times"] = door_keys_json["AccessTimes"]
             door_keys_data["allowed_times"] = door_keys_json["AllowedTimes"]
             door_keys_data["each_allowed_times"] = door_keys_json["EachAllowedTimes"]
-            door_keys_data["qr_code_url"] = f"https://{TEMP_KEY_QR_HOST}{door_keys_json['QrCodeUrl']}"
+            door_keys_data["qr_code_url"] = (
+                f"https://{TEMP_KEY_QR_HOST}{door_keys_json['QrCodeUrl']}"
+            )
             door_keys_data["expired"] = False if door_keys_json["Expired"] else True
 
             door_keys_data["doors"] = []
             if "Doors" in door_keys_json:
                 for door_key_json in door_keys_json["Doors"]:
-                    door_keys_data["doors"].append({
-                        "door_id": door_key_json["ID"],
-                        "key_id": door_key_json["KeyID"],  # Reference to key
-                        "relay": door_key_json["Relay"],
-                        "mac": door_key_json["MAC"]
-                    })
+                    door_keys_data["doors"].append(
+                        {
+                            "door_id": door_key_json["ID"],
+                            "key_id": door_key_json["KeyID"],  # Reference to key
+                            "relay": door_key_json["Relay"],
+                            "mac": door_key_json["MAC"],
+                        }
+                    )
 
             self.door_keys_data.append(door_keys_data)
 
         if len(self.door_keys_data) > 0:
-            LOGGER.debug("🔑 %s Temp key%s parsed:",
-                        str(len(self.door_keys_data)),
-                        "s" if len(self.door_keys_data) > 1 else "")
+            LOGGER.debug(
+                "🔑 %s Temp key%s parsed:",
+                str(len(self.door_keys_data)),
+                "s" if len(self.door_keys_data) > 1 else "",
+            )
             for door_relay_dict in self.door_relay_data:
-                LOGGER.debug(" - '%s', with access to %s door%s",
-                             door_relay_dict.get("name", ""),
-                             str(len(door_keys_data["doors"])),
-                             "" if len(door_keys_data["doors"]) == 1 else "s")
+                LOGGER.debug(
+                    " - '%s', with access to %s door%s",
+                    door_relay_dict.get("name", ""),
+                    str(len(door_keys_data["doors"])),
+                    "" if len(door_keys_data["doors"]) == 1 else "s",
+                )
 
     async def async_parse_personal_door_log(self, json_data: list):
         """Parse the getDoorLog API response."""
@@ -197,19 +250,27 @@ class AkuvoxData:
         is_wait = await self.async_get_stored_data_for_key("wait_for_image_url")
         if json_data is not None and len(json_data) > 0:
             new_door_log = json_data[0]
-            latest_door_log = await self.async_get_stored_data_for_key("latest_door_log")
+            latest_door_log = await self.async_get_stored_data_for_key(
+                "latest_door_log"
+            )
             if latest_door_log is not None and CAPTURE_TIME_KEY in latest_door_log:
                 if new_door_log is not None and CAPTURE_TIME_KEY in new_door_log:
                     # Ignore previous door open event
-                    if str(latest_door_log[CAPTURE_TIME_KEY]) == str(new_door_log[CAPTURE_TIME_KEY]):
+                    if str(latest_door_log[CAPTURE_TIME_KEY]) == str(
+                        new_door_log[CAPTURE_TIME_KEY]
+                    ):
                         return None
                     # Screenshot required and currently unavailable
                     if PIC_URL_KEY in new_door_log and new_door_log[PIC_URL_KEY] == "":
                         if is_wait is True:
-                            LOGGER.debug("New door entry detected --> Waiting for screenshot URL...")
+                            LOGGER.debug(
+                                "New door entry detected --> Waiting for screenshot URL..."
+                            )
                             return None
                         else:
-                            LOGGER.debug("New door entry detected --> Not waiting for the screenshot URL...")
+                            LOGGER.debug(
+                                "New door entry detected --> Not waiting for the screenshot URL..."
+                            )
                     # New door event detected
                     LOGGER.debug("ℹ️ New personal door log entry detected:")
                     LOGGER.debug(" - Initiator: %s", new_door_log["Initiator"])
@@ -228,7 +289,7 @@ class AkuvoxData:
     async def async_set_stored_data_for_key(self, key, value):
         """Store key/value pair to integration's storage."""
         store = storage.Store(self.hass, 1, DATA_STORAGE_KEY)
-        stored_data: dict = await store.async_load() # type: ignore
+        stored_data: dict = await store.async_load()  # type: ignore
         if stored_data is None:
             stored_data = {}
         stored_data[key] = value
@@ -237,7 +298,7 @@ class AkuvoxData:
     async def async_get_stored_data_for_key(self, key):
         """Store key/value pair to integration's storage."""
         store = storage.Store(self.hass, 1, DATA_STORAGE_KEY)
-        stored_data: dict = await store.async_load() # type: ignore
+        stored_data: dict = await store.async_load()  # type: ignore
         if stored_data:
             return stored_data.get(key, None)
 
@@ -252,5 +313,5 @@ class AkuvoxData:
             "refresh_token": self.refresh_token,
             "camera_data": self.camera_data,
             "door_relay_data": self.door_relay_data,
-            "door_keys_data": self.door_keys_data
+            "door_keys_data": self.door_keys_data,
         }

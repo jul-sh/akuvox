@@ -3,8 +3,9 @@
 from .const import (
     # LOGGER,
     COUNTRY_PHONE,
-    LOCATIONS_DICT
+    LOCATIONS_DICT,
 )
+
 
 class AkuvoxHelpers:
     """Class with helper functions."""
@@ -14,7 +15,7 @@ class AkuvoxHelpers:
         location_dict = self.get_location_dict(country_code)
         if location_dict:
             return location_dict["subdomain"]
-        return "ecloud"
+        return "ucloud"
 
     def get_location_dict(self, country_code):
         """User's location dict."""
@@ -22,7 +23,7 @@ class AkuvoxHelpers:
             "country": "Unknown",
             "phone_number": "Unknown",
             "flag": "?",
-            "subdomain": "ecloud"
+            "subdomain": "ucloud",
         }
         if country_code and len(country_code) > 0 and country_code != "-1":
             country_name = self.find_country_name_code(country_code)
@@ -47,7 +48,7 @@ class AkuvoxHelpers:
 
     def get_country_names_list(self):
         """List of country names supported by Akuvox."""
-        country_names_list:list = []
+        country_names_list: list = []
         for _country, country_dict in LOCATIONS_DICT.items():
             country_names_list.append(country_dict.get("country"))
         country_names_list.sort()
