@@ -15,9 +15,19 @@ Pull requests are the best way to propose changes to the codebase.
 
 1. Fork the repo and create your branch from `main`.
 2. If you've changed something, update the documentation.
-3. Make sure your code lints (using `scripts/lint`).
+3. Make sure your code lints (using `scripts/lint` or `uv run ruff check .`).
 4. Test you contribution.
 5. Issue that pull request!
+
+## Local development
+
+Dependencies are managed with [uv](https://docs.astral.sh/uv/). To get started:
+
+1. Install uv.
+2. Run `./scripts/setup` (which calls `uv sync --dev`) to create the local `.venv`.
+3. Use `uv run` to execute helper scripts, Home Assistant, and tooling (`uv run hass …`, `uv run python scripts/...`, `uv run ruff check .`).
+
+If you prefer reproducible shells, `nix develop` will drop you into an environment that already contains uv, Python 3.11, and Ruff pinned via the project `flake.nix`.
 
 ## Any contributions you make will be under the MIT Software License
 
@@ -44,7 +54,7 @@ People *love* thorough bug reports. I'm not even kidding.
 
 ## Use a Consistent Coding Style
 
-Use [black](https://github.com/ambv/black) to make sure the code follows the style.
+Use [Ruff](https://docs.astral.sh/ruff/) for linting/formatting via `uv run ruff check .` (or `./scripts/lint` for the autofix workflow).
 
 ## Test your code modification
 

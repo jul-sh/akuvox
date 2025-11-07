@@ -29,6 +29,31 @@ The integration test script runs the production client end-to-end: it performs t
 
 ---
 
+## Development Environment
+
+This repository now relies on [uv](https://docs.astral.sh/uv/) for dependency management and locking. To bootstrap a local environment:
+
+1. [Install uv](https://docs.astral.sh/uv/getting-started/installation/) (a single static binary).
+2. Run `./scripts/setup` to create/update the project virtual environment (`uv sync --dev` under the hood).
+3. Use `uv run` for all tooling, e.g.:
+   - `uv run hass --config ./config --debug`
+   - `uv run python scripts/akuvox_request_sms.py --country-code …`
+   - `uv run ruff check .`
+
+The helper scripts (`scripts/develop`, `scripts/lint`, etc.) already wrap the correct `uv` commands, so you can continue to invoke them directly once `uv sync` has been executed.
+
+### Optional: Reproducible shell with Nix
+
+If you have [Nix flakes](https://nixos.wiki/wiki/Flakes) enabled you can drop into a fully reproducible dev shell that ships with `uv`, Python 3.11, and Ruff pinned via:
+
+```
+nix develop
+```
+
+Inside the shell you can immediately run `uv sync --dev` or the helper scripts without touching the global OS tooling.
+
+---
+
 ## Show Your Support
 
 If you find this integration useful, consider showing your support to the original author who created this integration:

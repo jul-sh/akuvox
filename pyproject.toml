@@ -1,0 +1,22 @@
+[project]
+name = "akuvox"
+version = "0.1.0"
+description = "Home Assistant Akuvox integration utilities"
+readme = "README.md"
+requires-python = ">=3.11"
+dependencies = [
+    "colorlog==6.8.2",
+    "homeassistant==2023.7.3",
+]
+
+[project.optional-dependencies]
+dev = [
+    "ruff==0.6.1",
+]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.uv]
+package = false
