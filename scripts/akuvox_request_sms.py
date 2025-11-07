@@ -1,21 +1,25 @@
 #!/usr/bin/env python3
-"""
-Utility script to trigger the Akuvox SMS login flow.
+"""Utility script to trigger the Akuvox SMS login flow.
 
 Example:
     python3 scripts/akuvox_request_sms.py --country-code 1 --phone 2121239876 --subdomain ucloud
 
 It resolves the regional REST host and then calls `send_mobile_checkcode`
 so the Akuvox backend sends a verification code to the configured phone.
+
 """
 
 from __future__ import annotations
 
 import argparse
+import logging
 import sys
-from typing import Any, Dict
+from typing import Any
 
 import requests
+
+logging.basicConfig(level=logging.INFO)
+LOGGER = logging.getLogger(__name__)
 
 
 REST_SERVER_ENDPOINT = "https://gate.{subdomain}.akuvox.com:8600/rest_server"
@@ -32,7 +36,7 @@ def _resolve_rest_host(subdomain: str) -> str:
     response = requests.get(url, headers=headers, timeout=10)
     response.raise_for_status()
 
-    payload: Dict[str, Any] = response.json()
+    payload: dict[str, Any] = response.json()
     rest_host = (payload.get("datas") or {}).get("rest_server_https")
     if not rest_host:
         raise RuntimeError(f"rest_server response missing host: {payload}")
@@ -44,7 +48,7 @@ def _resolve_rest_host(subdomain: str) -> str:
     return rest_host
 
 
-def _trigger_sms(rest_host: str, country_code: str, phone: str) -> Dict[str, Any]:
+def _trigger_sms(rest_host: str, country_code: str, phone: str) -> dict[str, Any]:
     """Invoke the `send_mobile_checkcode` endpoint for the given phone."""
     url = f"https://{rest_host}/{SMS_ENDPOINT_PATH}"
     headers = {
@@ -65,6 +69,7 @@ def _trigger_sms(rest_host: str, country_code: str, phone: str) -> Dict[str, Any
 
 
 def main() -> int:
+    """CLI entry point for triggering the Akuvox SMS verification flow."""
     parser = argparse.ArgumentParser(
         description="Trigger the Akuvox SMS verification flow."
     )
@@ -87,21 +92,21 @@ def main() -> int:
 
     try:
         rest_host = _resolve_rest_host(args.subdomain)
-        print(f"Resolved REST host: {rest_host}")
+        LOGGER.info("Resolved REST host: %s", rest_host)
 
         result = _trigger_sms(
             rest_host=rest_host,
             country_code=args.country_code,
             phone=args.phone,
         )
-        print("SMS request response:")
-        print(result)
+        LOGGER.info("SMS request response: %s", result)
         if str(result.get("err_code")) != "0":
+            LOGGER.error("SMS request returned error payload: %s", result)
             return 1
-        print("✅ SMS verification code requested successfully.")
+        LOGGER.info("✅ SMS verification code requested successfully.")
         return 0
     except Exception as exc:  # pylint: disable=broad-except
-        print(f"Error while requesting SMS code: {exc}", file=sys.stderr)
+        LOGGER.exception("Error while requesting SMS code: %s", exc)
         return 2
 
 

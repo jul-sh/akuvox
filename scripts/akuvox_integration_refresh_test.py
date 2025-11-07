@@ -1,6 +1,5 @@
 #!/usr/bin/env python3
-"""
-Manual integration-level test replicating the end-to-end Akuvox refresh flow.
+"""Manual integration-level test replicating the end-to-end Akuvox refresh flow.
 
 Example:
     python3 scripts/akuvox_integration_refresh_test.py --country-code 1 --phone 2121239876 --subdomain ucloud --sms-code 123456
@@ -10,28 +9,31 @@ This uses the integration's own `AkuvoxApiClient` to:
 2. Exchange the SMS code for auth/refresh/session tokens.
 3. Perform three refresh cycles, ensuring each rotates the token pair.
 4. Trigger a door open action with the final session token.
+
 """
 
 from __future__ import annotations
 
 import argparse
 import asyncio
+import logging
 from dataclasses import dataclass, field
 from pathlib import Path
-import logging
 import sys
-from typing import Any, Dict, Tuple
+from typing import Any
 
 import aiohttp
 from homeassistant.core import HomeAssistant
 
-# Ensure the repository root (containing custom_components) is importable.
-REPO_ROOT = Path(__file__).resolve().parents[1]
-if str(REPO_ROOT) not in sys.path:
-    sys.path.insert(0, str(REPO_ROOT))
-
-from custom_components.akuvox.api import AkuvoxApiClient
-from custom_components.akuvox.const import LOGGER
+try:
+    from custom_components.akuvox.api import AkuvoxApiClient
+    from custom_components.akuvox.const import LOGGER
+except ModuleNotFoundError:  # pragma: no cover - convenience for running the script directly.
+    REPO_ROOT = Path(__file__).resolve().parents[1]
+    if str(REPO_ROOT) not in sys.path:
+        sys.path.insert(0, str(REPO_ROOT))
+    from custom_components.akuvox.api import AkuvoxApiClient
+    from custom_components.akuvox.const import LOGGER
 
 logging.basicConfig(level=logging.DEBUG)
 LOGGER.setLevel(logging.DEBUG)
@@ -41,8 +43,8 @@ LOGGER.setLevel(logging.DEBUG)
 class _DummyEntry:
     """Minimal config entry stand-in for manual testing."""
 
-    data: Dict[str, Any] = field(default_factory=dict)
-    options: Dict[str, Any] = field(default_factory=dict)
+    data: dict[str, Any] = field(default_factory=dict)
+    options: dict[str, Any] = field(default_factory=dict)
 
 
 async def _run_flow(
@@ -52,9 +54,8 @@ async def _run_flow(
     subdomain: str,
     sms_code: str,
     refresh_count: int,
-) -> Tuple[AkuvoxApiClient, Dict[str, Any]]:
-    """
-    Execute the integration's login, refresh, and door-open workflow.
+) -> tuple[AkuvoxApiClient, dict[str, Any]]:
+    """Execute the integration's login, refresh, and door-open workflow.
 
     Returns the API client alongside the final door-open response.
     """
@@ -154,6 +155,7 @@ async def _run_flow(
 
 
 def main() -> int:
+    """CLI entry point for the integration refresh test."""
     parser = argparse.ArgumentParser(
         description="Run the Akuvox integration end-to-end refresh test.",
     )
@@ -186,20 +188,21 @@ def main() -> int:
             )
         )
 
-        print("Final token state:")
-        print(f"  token         = {client._data.token}")  # type: ignore[attr-defined]
-        print(f"  refresh_token = {client._data.refresh_token}")  # type: ignore[attr-defined]
-        print("Door open response:")
-        print(door_response)
+        LOGGER.info("Final token state:")
+        LOGGER.info("  token         = %s", client._data.token)  # type: ignore[attr-defined]
+        LOGGER.info(
+            "  refresh_token = %s", client._data.refresh_token
+        )  # type: ignore[attr-defined]
+        LOGGER.info("Door open response: %s", door_response)
 
         if str(door_response.get("err_code")) != "0":
-            print("Door open request failed.", file=sys.stderr)
+            LOGGER.error("Door open request failed with payload: %s", door_response)
             return 1
 
-        print("✅ Integration refresh test completed successfully.")
+        LOGGER.info("✅ Integration refresh test completed successfully.")
         return 0
     except Exception as exc:  # pylint: disable=broad-except
-        print(f"Integration refresh test failed: {exc}", file=sys.stderr)
+        LOGGER.exception("Integration refresh test failed: %s", exc)
         return 2
 
 

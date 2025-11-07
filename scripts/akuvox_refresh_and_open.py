@@ -1,6 +1,5 @@
 #!/usr/bin/env python3
-"""
-Complete Akuvox login + refresh + door open workflow.
+"""Complete Akuvox login + refresh + door open workflow.
 
 Example:
     python3 scripts/akuvox_refresh_and_open.py --country-code 1 --phone 2121239876 --subdomain ucloud --sms-code 123456
@@ -10,15 +9,20 @@ Steps performed:
 2. Rotate the session token three times using the refresh API.
 3. Fetch the device configuration to locate a door relay.
 4. Issue an `opendoor` request using the latest token.
+
 """
 
 from __future__ import annotations
 
 import argparse
+import logging
 import sys
-from typing import Any, Dict, Optional, Tuple
+from typing import Any
 
 import requests
+
+logging.basicConfig(level=logging.INFO)
+LOGGER = logging.getLogger(__name__)
 
 
 REST_SERVER_ENDPOINT = "https://gate.{subdomain}.akuvox.com:8600/rest_server"
@@ -41,7 +45,7 @@ def _resolve_rest_host(subdomain: str) -> str:
     response = requests.get(url, headers=headers, timeout=10)
     response.raise_for_status()
 
-    payload: Dict[str, Any] = response.json()
+    payload: dict[str, Any] = response.json()
     rest_host = (payload.get("datas") or {}).get("rest_server_https")
     if not rest_host:
         raise RuntimeError(f"rest_server response missing host: {payload}")
@@ -60,7 +64,7 @@ def _obfuscate_phone(phone: str) -> str:
 
 def _perform_sms_login(
     subdomain: str, country_code: str, phone: str, sms_code: str
-) -> Tuple[str, str, str]:
+) -> tuple[str, str, str]:
     """Exchange SMS code for tokens."""
     obfuscated = _obfuscate_phone(phone)
     url = SMS_LOGIN_ENDPOINT.format(
@@ -77,7 +81,7 @@ def _perform_sms_login(
     response = requests.get(url, headers=headers, timeout=10)
     response.raise_for_status()
 
-    payload: Dict[str, Any] = response.json()
+    payload: dict[str, Any] = response.json()
     if str(payload.get("result")) != "0":
         raise RuntimeError(f"sms_login failed: {payload}")
 
@@ -91,7 +95,7 @@ def _perform_sms_login(
     return auth_token, refresh_token, token
 
 
-def _refresh_tokens(subdomain: str, token: str, refresh_token: str) -> Tuple[str, str]:
+def _refresh_tokens(subdomain: str, token: str, refresh_token: str) -> tuple[str, str]:
     """Call the refresh endpoint and return the rotated token pair."""
     headers = {
         "content-type": "application/json",
@@ -112,7 +116,7 @@ def _refresh_tokens(subdomain: str, token: str, refresh_token: str) -> Tuple[str
     )
     response.raise_for_status()
 
-    refresh_payload: Dict[str, Any] = response.json()
+    refresh_payload: dict[str, Any] = response.json()
     if str(refresh_payload.get("err_code")) != "0":
         raise RuntimeError(f"refresh_token failed: {refresh_payload}")
 
@@ -125,9 +129,8 @@ def _refresh_tokens(subdomain: str, token: str, refresh_token: str) -> Tuple[str
     return new_token, new_refresh
 
 
-def _fetch_door_target(rest_host: str, token: str) -> Tuple[str, str]:
-    """
-    Retrieve the first available door relay target.
+def _fetch_door_target(rest_host: str, token: str) -> tuple[str, str]:
+    """Retrieve the first available door relay target.
 
     Returns (mac, relay_id).
     """
@@ -145,7 +148,7 @@ def _fetch_door_target(rest_host: str, token: str) -> Tuple[str, str]:
     response = requests.get(url, headers=headers, timeout=10)
     response.raise_for_status()
 
-    payload: Dict[str, Any] = response.json()
+    payload: dict[str, Any] = response.json()
     if str(payload.get("err_code")) != "0":
         raise RuntimeError(f"userconf failed: {payload}")
 
@@ -160,7 +163,7 @@ def _fetch_door_target(rest_host: str, token: str) -> Tuple[str, str]:
     raise RuntimeError("No door relay found in user configuration.")
 
 
-def _open_door(rest_host: str, token: str, mac: str, relay: str) -> Dict[str, Any]:
+def _open_door(rest_host: str, token: str, mac: str, relay: str) -> dict[str, Any]:
     """Invoke the `opendoor` endpoint."""
     url = f"https://{rest_host}/{OPENDOOR_PATH}?token={token}"
     headers = {
@@ -185,6 +188,7 @@ def _open_door(rest_host: str, token: str, mac: str, relay: str) -> Dict[str, An
 
 
 def main() -> int:
+    """CLI entry point for refreshing tokens and opening an Akuvox door."""
     parser = argparse.ArgumentParser(
         description="Complete the Akuvox login flow, refresh tokens, and open a door."
     )
@@ -220,7 +224,7 @@ def main() -> int:
 
     try:
         rest_host = _resolve_rest_host(args.subdomain)
-        print(f"Resolved REST host: {rest_host}")
+        LOGGER.info("Resolved REST host: %s", rest_host)
 
         auth_token, refresh_token, token = _perform_sms_login(
             subdomain=args.subdomain,
@@ -228,10 +232,10 @@ def main() -> int:
             phone=args.phone,
             sms_code=args.sms_code,
         )
-        print("Login tokens acquired:")
-        print(f"  auth_token    = {auth_token}")
-        print(f"  refresh_token = {refresh_token}")
-        print(f"  token         = {token}")
+        LOGGER.info("Login tokens acquired:")
+        LOGGER.info("  auth_token    = %s", auth_token)
+        LOGGER.info("  refresh_token = %s", refresh_token)
+        LOGGER.info("  token         = %s", token)
 
         for idx in range(1, 4):
             token, refresh_token = _refresh_tokens(
@@ -239,14 +243,19 @@ def main() -> int:
                 token=token,
                 refresh_token=refresh_token,
             )
-            print(f"Refresh #{idx} -> token={token}, refresh_token={refresh_token}")
+            LOGGER.info(
+                "Refresh #%d -> token=%s, refresh_token=%s",
+                idx,
+                token,
+                refresh_token,
+            )
 
-        mac: Optional[str] = args.door_mac
-        relay: Optional[str] = args.door_relay
+        mac: str | None = args.door_mac
+        relay: str | None = args.door_relay
 
         if not mac or relay is None:
             mac, relay = _fetch_door_target(rest_host=rest_host, token=token)
-            print(f"Selected door relay mac={mac} relay={relay}")
+            LOGGER.info("Selected door relay mac=%s relay=%s", mac, relay)
 
         response = _open_door(
             rest_host=rest_host,
@@ -254,14 +263,14 @@ def main() -> int:
             mac=mac,
             relay=relay,
         )
-        print("Door open response:")
-        print(response)
+        LOGGER.info("Door open response: %s", response)
         if str(response.get("err_code")) != "0":
+            LOGGER.error("Door open request failed with payload: %s", response)
             return 1
-        print("✅ Door opened successfully with the refreshed token.")
+        LOGGER.info("✅ Door opened successfully with the refreshed token.")
         return 0
     except Exception as exc:  # pylint: disable=broad-except
-        print(f"Workflow failed: {exc}", file=sys.stderr)
+        LOGGER.exception("Workflow failed: %s", exc)
         return 2
 
 
