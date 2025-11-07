@@ -34,7 +34,7 @@ class AkuvoxFlowHandler(config_entries.ConfigFlow, domain=DOMAIN):
         return AkuvoxOptionsFlowHandler(config_entry)
 
     async def async_step_user(self, user_input=None):
-        """Initial entry step - redirect to SMS sign-in."""
+        """Redirect the user to the SMS sign-in step."""
 
         # Initialize the API client
         if self.akuvox_api_client is None:
