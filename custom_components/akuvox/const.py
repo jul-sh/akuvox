@@ -10,9 +10,6 @@ ATTRIBUTION = "Data provided by https://ecloud.akuvox.com/"
 
 DEFAULT_COUNTRY_CODE = "+1"
 DEFAULT_PHONE_NUMBER = "555-5555"
-DEFAULT_APP_TOKEN = ""
-DEFAULT_TOKEN = ""
-
 SUBDOMAIN_AU = "aucloud"
 SUBDOMAIN_C = "ccloud"
 SUBDOMAIN_J = "jcloud"
