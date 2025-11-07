@@ -5,6 +5,7 @@ import asyncio
 import socket
 import json
 import time
+from typing import Any
 
 from homeassistant.core import HomeAssistant
 
@@ -64,6 +65,8 @@ class AkuvoxApiClient:
         """Akuvox API Client."""
         self._session = session
         self.hass = hass
+        self._last_api_error: dict[str, Any] | None = None
+        self._door_log_refresh_cooldown: float = 0
         if entry:
             LOGGER.debug("▶️ Initializing AkuvoxData from API client init")
             self._data = AkuvoxData(
@@ -508,7 +511,22 @@ class AkuvoxApiClient:
 
     async def async_get_personal_door_log(self):
         """Request the user's personal door log data."""
-        # LOGGER.debug("📡 Retrieving list of user's personal door log...")
+        json_data = await self._async_fetch_personal_door_log()
+        needs_refresh = (
+            json_data is None or (isinstance(json_data, list) and len(json_data) == 0)
+        )
+
+        if needs_refresh and await self._maybe_refresh_tokens_for_door_log():
+            json_data = await self._async_fetch_personal_door_log()
+
+        if json_data is not None and len(json_data) > 0:
+            return json_data
+
+        LOGGER.error("❌ Unable to retrieve user's personal door log")
+        return None
+
+    async def _async_fetch_personal_door_log(self):
+        """Fetch the raw personal door log response."""
         host = self.get_activities_host()
         url = f"https://{host}/{API_GET_PERSONAL_DOOR_LOG}"
         data = {}
@@ -539,12 +557,7 @@ class AkuvoxApiClient:
                                                       url=url,
                                                       headers=headers,
                                                       data=data) # type: ignore
-
-        if json_data is not None and len(json_data) > 0:
-            return json_data
-
-        LOGGER.error("❌ Unable to retrieve user's personal door log")
-        return None
+        return json_data
 
     ###################
     # Request Methods #
@@ -608,23 +621,34 @@ class AkuvoxApiClient:
                 json_data = response.json()
 
                 # Standard requests
-                if "result" in json_data and json_data["result"] == 0:
-                    if "datas" in json_data:
-                        return json_data["datas"]
-                    return json_data
+                if "result" in json_data:
+                    if json_data["result"] == 0:
+                        self._last_api_error = None
+                        if "datas" in json_data:
+                            return json_data["datas"]
+                        return json_data
+                    self._handle_api_error(url, json_data)
+                    return None
 
                 # Temp key requests
                 if "code" in json_data:
                     if json_data["code"] == 0:
+                        self._last_api_error = None
                         if "data" in json_data:
                             return json_data["data"]
                         return json_data
+                    self._handle_api_error(url, json_data)
                     return []
 
                 # Refresh token or newer API pattern
                 if "err_code" in json_data and str(json_data["err_code"]) == "0":
+                    self._last_api_error = None
                     return json_data
+                if "err_code" in json_data:
+                    self._handle_api_error(url, json_data)
                 LOGGER.warning("🤨 Response: %s", str(json_data))
+                self._last_api_error = None
+                return json_data
             except Exception as error:
                 LOGGER.error("❌ Error occurred when parsing JSON: %s\nRequest: %s",
                              error,
@@ -634,6 +658,53 @@ class AkuvoxApiClient:
                          response.status_code,
                          url)
         return None
+
+    def _handle_api_error(self, url: str, payload: dict[str, Any]):
+        """Store and log the last API error payload."""
+        self._last_api_error = payload
+        error_code = (
+            payload.get("code")
+            or payload.get("result")
+            or payload.get("err_code")
+        )
+        error_message = payload.get("msg") or payload.get("message") or payload
+        LOGGER.warning(
+            "Akuvox API error (code %s) for %s: %s",
+            error_code,
+            url,
+            error_message,
+        )
+
+    async def _maybe_refresh_tokens_for_door_log(self) -> bool:
+        """Refresh tokens when the door log API reports expired credentials."""
+        if not self._last_api_error:
+            return False
+        error_code = str(self._last_api_error.get("code", ""))
+        if error_code != "2":
+            return False
+
+        now = time.time()
+        # Avoid hammering the refresh endpoint if it keeps failing
+        if now - self._door_log_refresh_cooldown < 30:
+            return False
+        self._door_log_refresh_cooldown = now
+
+        error_message = (
+            self._last_api_error.get("msg")
+            or self._last_api_error.get("message")
+            or "Invalid identity information"
+        )
+
+        LOGGER.warning(
+            "Door log request rejected (%s). Refreshing Akuvox tokens and retrying once.",
+            error_message,
+        )
+        if await self.async_refresh_token():
+            LOGGER.info("✅ Token refresh successful; retrying door log request.")
+            return True
+
+        LOGGER.error("❌ Token refresh failed after door log rejection.")
+        return False
 
     async def async_make_get_request(self, url, headers, data=None):
         """Make an HTTP get request."""
