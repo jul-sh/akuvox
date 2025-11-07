@@ -76,11 +76,20 @@ class AkuvoxApiClient:
     async def async_init_api(self) -> bool:
         """Initialize API configuration data."""
         # Load refresh token from storage if not already set
-        if not self._data.refresh_token:
-            stored_refresh_token = await self._data.async_get_stored_data_for_key("refresh_token")
-            if stored_refresh_token:
-                self._data.refresh_token = stored_refresh_token
-                LOGGER.debug("📱 Loaded refresh token from storage")
+        stored_token = await self._data.async_get_stored_data_for_key("token")
+        if stored_token:
+            self._data.token = stored_token
+            LOGGER.debug("🔐 Loaded access token from storage")
+
+        stored_auth_token = await self._data.async_get_stored_data_for_key("auth_token")
+        if stored_auth_token:
+            self._data.auth_token = stored_auth_token
+            LOGGER.debug("🔐 Loaded auth token from storage")
+
+        stored_refresh_token = await self._data.async_get_stored_data_for_key("refresh_token")
+        if stored_refresh_token:
+            self._data.refresh_token = stored_refresh_token
+            LOGGER.debug("📱 Loaded refresh token from storage")
 
         # Check and refresh tokens if needed
         if self._data.refresh_token:
