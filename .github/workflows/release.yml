@@ -1,35 +1,52 @@
-name: "Release"
+name: Create Release for Commit
 
 on:
-  release:
-    types:
-      - "published"
+  push:
+    branches:
+      - main
+    paths:
+      - "sources/**"
+      - ".github/**"
+  pull_request:
+    branches:
+      - main
+    paths:
+      - "sources/**"
+      - ".github/**"
+  workflow_dispatch:
 
-permissions: {}
+permissions:
+  contents: write
+  packages: read
 
 jobs:
-  release:
-    name: "Release"
-    runs-on: "ubuntu-latest"
-    permissions:
-      contents: write
+  create-release:
+    runs-on: ubuntu-latest
+
     steps:
-      - name: "Checkout the repository"
-        uses: "actions/checkout@v4"
+      - name: Checkout repository
+        uses: actions/checkout@v4
 
-      - name: "Adjust version number"
-        shell: "bash"
+      # Create a tag for the release
+      - name: Create tag
+        id: create_tag
         run: |
-          yq -i -o json '.version="${{ github.event.release.tag_name }}"' \
-            "${{ github.workspace }}/custom_components/akuvox/manifest.json"
+          git config user.name github-actions
+          git config user.email github-actions@github.com
+          TAG_NAME="release-$(date +'%Y%m%d-%H%M%S')"
+          echo "TAG_NAME=$TAG_NAME" >> $GITHUB_ENV
+          git tag $TAG_NAME
+          git push origin $TAG_NAME
 
-      - name: "ZIP the integration directory"
-        shell: "bash"
-        run: |
-          cd "${{ github.workspace }}/custom_components/akuvox"
-          zip akuvox.zip -r ./
-
-      - name: "Upload the ZIP file to the release"
-        uses: softprops/action-gh-release@v2.0.8
+      # Create a release
+      - name: Create Release
+        id: create_release
+        uses: softprops/action-gh-release@v1
         with:
-          files: ${{ github.workspace }}/custom_components/akuvox/akuvox.zip
+          name: Commit - ${{ github.sha }}
+          body: |
+            Release for commit ${{ github.sha }}
+          draft: false
+          prerelease: false
+          token: ${{ secrets.GITHUB_TOKEN }}
+          tag_name: ${{ env.TAG_NAME }}
