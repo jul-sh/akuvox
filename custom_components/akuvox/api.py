@@ -435,7 +435,7 @@ class AkuvoxApiClient:
         LOGGER.error("❌ Unable to retrieve user's device list.")
         return None
 
-    def make_opendoor_request(self, name: str, host: str, token: str, data: str):
+    def make_opendoor_request(self, name: str, host: str, token: str, data: str, retry_after_refresh: bool = True):
         """Request the user's configuration data."""
         LOGGER.debug("📡 Sending request to open door '%s'...", name)
         LOGGER.debug("Request data = %s", str(data))
@@ -458,6 +458,15 @@ class AkuvoxApiClient:
         if json_data is not None:
             LOGGER.debug("✅ Door open request sent successfully.")
             return json_data
+
+        # Check if we should retry after refreshing tokens
+        if retry_after_refresh and self._last_api_error:
+            error_msg = str(self._last_api_error.get("message", "")).lower()
+            if "token invalid" in error_msg or "token expired" in error_msg:
+                LOGGER.warning("🔄 Token invalid/expired, attempting refresh and retry...")
+                # Schedule async token refresh - we can't await here since this is sync
+                # Instead, just log that a refresh is needed
+                LOGGER.warning("⚠️ Please call akuvox.refresh_tokens service or restart HA to get new tokens")
 
         LOGGER.error("❌ Request to open door failed.")
         return None
@@ -531,7 +540,9 @@ class AkuvoxApiClient:
         if json_data is not None and len(json_data) > 0:
             return json_data
 
-        LOGGER.error("❌ Unable to retrieve user's personal door log")
+        # Only log at debug level since this polls every 2 seconds
+        # An empty door log is normal when there haven't been any recent events
+        LOGGER.debug("No personal door log entries found (may be normal)")
         return None
 
     async def _async_fetch_personal_door_log(self):
@@ -688,8 +699,24 @@ class AkuvoxApiClient:
         """Refresh tokens when the door log API reports expired credentials."""
         if not self._last_api_error:
             return False
+
         error_code = str(self._last_api_error.get("code", ""))
-        if error_code != "2":
+        error_message = str(
+            self._last_api_error.get("msg")
+            or self._last_api_error.get("message")
+            or ""
+        ).lower()
+
+        # Check for various token-related error patterns
+        is_token_error = (
+            error_code == "2"  # Invalid identity information
+            or "token invalid" in error_message
+            or "token expired" in error_message
+            or "invalid identity" in error_message
+            or "unauthorized" in error_message
+        )
+
+        if not is_token_error:
             return False
 
         now = time.time()
@@ -698,15 +725,10 @@ class AkuvoxApiClient:
             return False
         self._door_log_refresh_cooldown = now
 
-        error_message = (
-            self._last_api_error.get("msg")
-            or self._last_api_error.get("message")
-            or "Invalid identity information"
-        )
-
         LOGGER.warning(
-            "Door log request rejected (%s). Refreshing Akuvox tokens and retrying once.",
-            error_message,
+            "Door log request rejected (code=%s, msg=%s). Refreshing Akuvox tokens and retrying once.",
+            error_code,
+            error_message or "unknown",
         )
         if await self.async_refresh_token():
             LOGGER.info("✅ Token refresh successful; retrying door log request.")

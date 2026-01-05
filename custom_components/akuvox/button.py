@@ -87,12 +87,45 @@ class AkuvoxDoorRelayEntity(ButtonEntity, AkuvoxEntity):
             manufacturer=NAME,
         )
 
-    def press(self) -> None:
+    async def async_press(self) -> None:
         """Trigger the door relay."""
-        self._client.make_opendoor_request(
-            name=self._name,
-            host=self._host,
-            token=self._token,
-            data=self._data
+        import asyncio
+        # Always use current token from client (not cached) in case it was refreshed
+        current_token = self._client._data.token
+        current_host = self._client._data.host
+
+        # Run blocking request in executor to avoid blocking the event loop
+        loop = asyncio.get_event_loop()
+        result = await loop.run_in_executor(
+            None,
+            lambda: self._client.make_opendoor_request(
+                name=self._name,
+                host=current_host,
+                token=current_token,
+                data=self._data,
+                retry_after_refresh=False  # We'll handle retry ourselves
+            )
         )
+
+        # If failed due to token issue, try refreshing and retry once
+        if result is None and self._client._last_api_error:
+            error_msg = str(self._client._last_api_error.get("message", "")).lower()
+            if "token invalid" in error_msg or "token expired" in error_msg:
+                LOGGER.warning("🔄 Token invalid/expired, attempting refresh and retry...")
+                if await self._client.async_refresh_token():
+                    LOGGER.info("✅ Token refreshed, retrying door open...")
+                    # Retry with new token
+                    current_token = self._client._data.token
+                    await loop.run_in_executor(
+                        None,
+                        lambda: self._client.make_opendoor_request(
+                            name=self._name,
+                            host=current_host,
+                            token=current_token,
+                            data=self._data,
+                            retry_after_refresh=False
+                        )
+                    )
+                else:
+                    LOGGER.error("❌ Token refresh failed, door open will not work until tokens are updated")
 
